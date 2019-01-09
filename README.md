@@ -1,2 +1,2 @@
 # chpy
-A tool for querying the UK companies house API, written in Python.
+A wrapper for the UK Companies House API, with tools for network analysis. In very early development, but far enough along for an upload.
