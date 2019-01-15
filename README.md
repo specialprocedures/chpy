@@ -6,7 +6,7 @@ This tool enables users to build a corporate network from information on the UK 
 If you're reading this, you're looking at the very first version which has been published, which probably means that I know you. Hello!
 It's still a very early version, full of cheap bug-fixes, and poorly-documented and thoroughly un-PEP8 code, but it's published. Yipee! Please feel free to mess around with what you have here, and provide feedback on anything you encounter.
 
-# usage
+# Usage
 This tool is currently intended for use alongside a Jupyter notebook, and I've provided a sample in the "example" directory.
 I believe that most users will want to do with this is simply build a network from a company that they have interest in.
 
