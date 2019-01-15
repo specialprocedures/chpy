@@ -1,0 +1,3 @@
+You'll need to get your own API key, you can find one here.
+
+https://developer.companieshouse.gov.uk/api/docs/
