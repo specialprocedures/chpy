@@ -4,7 +4,7 @@ A wrapper for the UK Companies House API, with tools for network analysis built 
 # Notes
 This tool enables users to build a corporate network from information on the UK Companies House API.
 
-It's still a very early version, full of cheap bug-fixes, and poorly-documented and thoroughly un-PEP8 code, but it's published. Please feel free to mess around with what you have here, and provide feedback on anything you encounter. Although please note it's undergoing a fairly substantial re-write with a big new update due in late January.
+It's still a very early version, full of cheap bug-fixes, debugging print-outs, and poorly-documented and thoroughly un-PEP8 code, but it's published. Please feel free to mess around with what you have here, and provide feedback on anything you encounter. Although please note it's undergoing a fairly substantial re-write with a big new update due in late January.
 
 # Installation
 ```
