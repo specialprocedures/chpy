@@ -2,6 +2,11 @@ import networkx as nx
 from chpy.utils import *
 from chpy.search import *
 
+def make_node_simple(item, graph):
+    item = flatten_dict(item, sep = ".")
+    graph.add_node(item['name'])
+    for i in item:
+        graph.node[item['name']][i] = item[i]
 
 def make_node_from_officer(item, graph, api_key, thresh = 95):
 

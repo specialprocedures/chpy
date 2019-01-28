@@ -15,6 +15,7 @@ def get_generic(url, api_key):
     generate complete call urls, then applies rate limiting and error-checking.
     """
 
+    # print(url)
     data = requests.get(url, auth=(api_key, ""))
     rate_limit(data)
 
@@ -23,15 +24,31 @@ def get_generic(url, api_key):
         try:
             return data.json()
         except JSONDecodeError:
-            print("Error: JSON")
-            data = {"total_results" : 0}
-            return data
+            # print("Error: JSON")
+            # data = {"total_results" : 0, "fail" : True}
+            return
+    elif data.status_code == 502:
+        for i in range(1,10):
+            data = requests.get(url, auth=(api_key, ""))
+            if data.status_code == 200:
+                ## Output is in a try/except, as I had some very rare errors crop up.
+                try:
+                    return data.json()
+                except JSONDecodeError:
+                    # print("Error: JSON")
+                    # data = {"total_results" : 0, "fail" : True}
+                    return
+            else:
+                pass
+        return
     else:
-        print("Error", data.status_code)
-        data = {"total_results" : 0}
-        return data
+        # print("Error", data.status_code)
+        # print(url)
+        # print(data)
+        # data = {"total_results" : 0, "fail" : True}
+        return
 
-def get_company(number, search_type, api_key):
+def get_company(number, search_type, api_key, iteration = None):
     """
     Multi-functional function to get data from a known company number.
     search_type expects:
@@ -48,9 +65,25 @@ def get_company(number, search_type, api_key):
         .format(base_url, number)
     else:
         print("Please specify 'profile', 'officers', or 'psc'")
-        return []
+        return
+
     data = get_generic(url, api_key)
+
+    try:
+        if data.get("items") != None:
+            for item in data['items']:
+                mark_result(item, search_type, iteration = iteration)
+        else:
+            mark_result(data, search_type, iteration = iteration)
+    except AttributeError:
+        return
     return data
+
+##################
+
+
+
+
 
 def get_search_officers(string, api_key, items_per_page = 100, start_index = 0):
     """
@@ -61,16 +94,16 @@ def get_search_officers(string, api_key, items_per_page = 100, start_index = 0):
 
     s_string = prep_for_search(string)
     url = "{}/search/officers?q={}&items_per_page={}&start_index={}" \
-    .format(base_url, s_string, items_per_page, start_index)
+    .format(base_url, s_string, items_per_page, format_nums(start_index))
     # print(url)
 
     data = get_generic(url, api_key)
 
-    if data['total_results'] == 0:
-        print("No results found for {}".format(string))
-        return data
-    else:
-        return data
+    # if data['total_results'] == 0:
+    #     print("No results found for {}".format(string))
+    #     return data
+    # else:
+    return data
 
 def get_officer_appointments(uri,
                              api_key,
@@ -84,11 +117,11 @@ def get_officer_appointments(uri,
     without calling the get_officer_uid() function.
     """
     url = "{}/officers/{}/appointments?items_per_page={}&start_index={}" \
-    .format(base_url, uri, items_per_page, start_index)
+    .format(base_url, uri, items_per_page, format_nums(start_index))
     data = get_generic(url, api_key)
     return data
 
-def search_filter(search_results, check_against, thresh = 95):
+def search_filter(search_results, check_against, thresh = 90):
     """
     A critical function which works to address the absence of effective uids
     for officer appointment resources. It matches search results with
@@ -134,36 +167,35 @@ def search_filter(search_results, check_against, thresh = 95):
     """
     out_data = []
 
-    if search_results['total_results'] == 0:
-        return
+    # try:
+    #     if search_results['total_results'] == 0:
+    #         return
+    # except TypeError:
+    #     print(search_results)
 
     search_results = strip_headers(search_results)
+
     for search_result in search_results:
         ## Name check vs. fuzz
-        if fuzz.token_sort_ratio(
-            search_result['title'].lower(),
-            check_against['name'].lower()) > thresh:
+        name_check = fuzz.token_sort_ratio(
+        search_result['title'].lower(),
+        check_against['name'].lower()) > thresh
 
-            ## format addresses for appropriate fuzz checking.
-            search_add = " ".join(
-                                 [i for i in search_result['address'].values()])
-            check_add = " ".join(
-                                 [i for i in check_against['address'].values()])
+        search_add = " ".join(
+        [i for i in search_result['address'].values()])
+        check_add = " ".join(
+        [i for i in check_against['address'].values()])
 
-            ## check addresses
-            if fuzz.token_set_ratio(search_add.lower(),
-                                    check_add.lower()) > thresh:
-                out_data.append(search_result)
-                continue
+        add_check = fuzz.token_set_ratio(search_add.lower(), check_add.lower()) > thresh
 
-            ## check for presence of a data of birth and confirm match
-            try:
-                if search_result['date_of_birth'] == \
-                   check_against['date_of_birth']:
-                    out_data.append(search_result)
-                    continue
-            except (TypeError, KeyError) as e:
-                pass
+        try:
+            dob_check = search_result['date_of_birth'] == check_against['date_of_birth']
+        except (TypeError, KeyError) as e:
+            dob_check = False
+
+
+        if (name_check and add_check) or (name_check and dob_check):
+            out_data.append(search_result)
 
     return out_data
 
@@ -205,11 +237,13 @@ def paginate_search(in_data,
     # Set type of search and call appropriate function.
     if search_type == "search":
         query = in_data['name']
+        # print("SRCHQ: ", query)
         data = get_search_officers(query, api_key,
                                    items_per_page, start_index)
 
     elif search_type == "appointments":
         query = get_officer_uid(in_data)
+        # print("APPT Q: ", query)
         data = get_officer_appointments(query, api_key,
                                         items_per_page, start_index)
 
@@ -217,41 +251,49 @@ def paginate_search(in_data,
         print("Please specify 'search' or 'appointments'")
         return
 
-    if data['total_results'] == 0:
-        return data
+    # if data['total_results'] == 0:
+    #     return data
 
     # Pull total number of results from header.
     total_results = data['total_results']
-
+    if total_results == 0:
+        return
     # Iterate through the number pages required (identified by dividing the
     # total_results by items_per_page)
     total_pages = math.ceil(total_results/items_per_page)
-
     for iteration in range(total_pages):
-        try:
-            data_len = len(data)
-        except (TypeError, KeyError) as e:
-            print("Insufficient information for search")
-            return
+        # try:
+
+        data_len = len(data['items'])
+
+        # except (TypeError, KeyError) as e:
+        #     print("Insufficient information for search")
+        #     return
         if search_type == "search":
-            data = search_filter(data, in_data)
+            filtered_data = search_filter(data, in_data)
             # For the "search" type, we'll start running out of "good" results
             # at some point. This try/except block gives up when we stop getting
             # a reasonable amount of hits.
             try:
-                hit_rate = len(data)/data_len
+                hit_rate = len(filtered_data)/data_len
             except ZeroDivisionError:
                 hit_rate = 0
+
+            for item in filtered_data:
+                if item not in out_data:
+                    out_data.append(item)
         # If it's not a search, it's an appointment list, which requires
         # pagination to the end of the list, in which case we maintain the
         # hit rate at 1.
         else:
+            out_data.append(data)
             hit_rate = 1
-
-        out_data.append(data)
 
         if hit_rate < 0.2:
             break
+
+        if iteration == 0:
+             continue
 
         start_index = iteration * items_per_page
 
@@ -260,9 +302,46 @@ def paginate_search(in_data,
         elif search_type == "appointments":
             data = get_officer_appointments(query, api_key, items_per_page, start_index)
 
-        if data['total_results'] == 0:
-            break
+        # try:
+        #     if data['total_results'] == 0:
+        #         break
+        # except (TypeError, KeyError) as e:
+        #     break
+    return out_data
 
+def get_appointments(node, api_key, iteration = 0):
+    out_data = []
+    dup_list = []
+    try:
+        if node.get('query_type') == "officers":
+            listed_appts = list(flatten(paginate_search(node, "appointments", api_key)))
+            dup_list.append(listed_appts[0]['links']['self'])
+            for appointment in listed_appts[0]['items']:
+                appointment = mark_result(appointment, "appointment", iteration = iteration)
+                appointment['source'] = appointment['name']
+                appointment['target'] = appointment['appointed_to']['company_name']
+                appointment['date_of_birth'] = listed_appts[0].get('date_of_birth')
+                out_data.append(appointment)
+    except (KeyError, AttributeError, TypeError) as e:
+        pass
+
+    try:
+        appt_search = list(flatten(paginate_search(node, "search", api_key)))
+    except TypeError as e:
+        return
+
+    for appt in appt_search:
+        if appt['links']['self'] not in dup_list:
+            appointments = list(flatten(paginate_search(appt, "appointments", api_key)))
+            for appointment in appointments[0]['items']:
+                if fuzz.token_sort_ratio(node['name'], appointment['name']) < 90:
+                    continue
+                else:
+                    appointment = mark_result(appointment, "appointment", iteration = iteration)
+                    appointment['source'] = appointment['name']
+                    appointment['target'] = appointment['appointed_to']['company_name']
+                    appointment['date_of_birth'] = appointments[0].get('date_of_birth')
+                    out_data.append(appointment)
     return out_data
 
 def get_company_search(string, api_key):

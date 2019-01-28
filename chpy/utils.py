@@ -3,7 +3,8 @@ import re
 import collections
 from pandas.io.json import json_normalize
 import time
-
+from datetime import datetime
+from fuzzywuzzy import fuzz, process
 """
 Part 1: Helper functions
 
@@ -23,8 +24,9 @@ def rate_limit(data):
     """
     try:
         if float(data.headers['X-Ratelimit-Remain']) < 10:
-            print("Five minute pause for rate limiting.")
-            time.sleep(300)
+            wait = abs(datetime.fromtimestamp(int(data.headers['X-Ratelimit-Reset'])) - datetime.now())
+            time.sleep(wait.seconds + 10)
+            print("Pausing for {} seconds for rate limiting".format(wait.seconds + 10))
     except KeyError:
         pass
 
@@ -180,15 +182,56 @@ def human_check(string):
 def nodes_to_csv(G, company_number):
     out = []
     for node in G.nodes(data = True):
-        out.append(node[1])
-    df = pd.DataFrame(out)
+        out.append({"id" : node[0], **node[1]})
+
+    df = json_normalize(out)
     df.to_csv('./data/{}/{}_nodes.csv'.format(company_number, company_number))
     return
 
 def edges_to_csv(G, company_number):
     out = []
     for edge in G.edges(data = True):
-        out.append(edge[2])
-    df = pd.DataFrame(out)
+        out.append({"source" : edge[0], "target" : edge[1], **edge[2]})
+    df = json_normalize(out)
     df.to_csv('./data/{}/{}_edges.csv'.format(company_number, company_number))
     return
+
+def mark_result(item, search_type, iteration = None):
+    if item.get("total_results") == 0:
+        return item
+    else:
+        item['query_type'] = search_type
+        if search_type == "psc" and item.get('kind') != None:
+            if item['kind'] == "corporate-entity-person-with-significant-control":
+                item['name'] = item['name'].upper()
+        if item.get('address') == None:
+            item['address'] = item.get('registered_office_address')
+        if item.get('name') == None:
+            if item.get('company_name') != None : item['name'] = item.get('company_name')
+            if item.get('title') != None : item['name'] = item.get('title')
+            if item.get('name') == None : return item
+        item['node_type'] = human_check(item['name'])
+        item['iteration'] = iteration
+        return item
+
+def fuzz_count(col, string):
+    return col[col == string].count()                                       ## Counts the occurances of a string in a column
+
+def fuzz_dict(col, tol):
+    test = {}
+    for i in col.unique():                                                  ## Iterate through everything in the column
+        for x in col.unique():                                              ## And do again, nested
+            if i != x:                                                      ## If our items are different, we test for similarity
+                if fuzz.token_sort_ratio(i, x) > tol:                       ## If the fuzz ratio between the two is higher than cut-off
+                    if int(fuzz_count(col, i)) > int(fuzz_count(col, x)):   ## See which is used more often in the column
+                        test[i] = i                                         ## Set dict as i if i is more frequent
+                    else:
+                        test[i] = x                                         ## And also for x
+    return test
+
+def clean_dict(x, dct):                                                     ## Just a find and replace with a dictionary for
+    try:                                                                    ## applying on a column
+        x = dct[x]
+    except:
+        pass
+    return x
