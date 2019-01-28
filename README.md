@@ -12,6 +12,10 @@ Networks are constructed through the following process:
 - These relationships are then added to the edge list, and the companies added to the company table for analysis in later iterations.
 - The process loops to a depth specified by the user.
 
+# How it works
+![alt text](https://raw.githubusercontent.com/specialprocedures/chpy/master/images/chpy_0_1_1a.gif)
+
+
 # New in 0.1.1a
 - The main function -- get_company_network() -- has been completely overhauled with:
   - A new, clearer structure for data acquisition.
