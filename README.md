@@ -7,7 +7,7 @@ Networks are constructed through the following process:
 - The user inputs a valid UK company number, alongside an API key and a number of desired iterations.
 - From this company, chpy draws down information on its officers and persons of significant control (PSC).
 - Relationships between officers/PSC and the company being searched are added to an edge list.
-- If an officer is a valid UK company, it is added to a list of companies for examination in later iterations. NB: In 0.1.1a, this functionality does not extend to PSCs.
+- If an officer is a valid UK company, it is added to a list of companies for examination in later iterations. NB: In 0.1.1, this functionality does not extend to PSCs.
 - chpy then searches the Companies House API for each officer/PSCs appointments to other companies, using fuzzy matching and date of birth/address checks to verify search results.
 - These relationships are then added to the edge list, and the companies added to the company table for analysis in later iterations.
 - The process loops to a depth specified by the user.
