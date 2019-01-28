@@ -12,21 +12,21 @@ Networks are constructed through the following process:
 - These relationships are then added to the edge list, and the companies added to the company table for analysis in later iterations.
 - The process loops to a depth specified by the user.
 
-# How it works
-![alt text](https://raw.githubusercontent.com/specialprocedures/chpy/master/images/chpy_0_1_1a.gif)
-
-
-# New in 0.1.1a
+# New in 0.1.1
 - The main function -- get_company_network() -- has been completely overhauled with:
   - A new, clearer structure for data acquisition.
   - Iteration depth.
   - Output to networkx graph and pandas dataframes from within Python.
-  - Clearer output whilst running, however progress bar functionality has been suspended in the alpha version.
+  - Clearer output whilst running, however progress bar functionality has been suspended for the time being.
+
+# How it works
+  ![alt text](https://raw.githubusercontent.com/specialprocedures/chpy/master/images/chpy_0_1_1a.gif)
 
 # Usage
 This tool is currently intended for use alongside a Jupyter notebook, and I've provided a sample in the "example" directory.
 I believe that most users will want to do with this is simply build a network from a company that they have interest in.
 It is strongly recommended that the depth is set to either 1 or 2. Depth scales exponentially, as will errors (see "A word of warning", below).
+
 
 ```
 pip install chpy

@@ -1,6 +1,6 @@
 import requests
 from fuzzywuzzy import fuzz
-import progressbar
+
 import math
 import time                                      ## For rate limiting
 

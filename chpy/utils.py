@@ -222,7 +222,7 @@ def fuzz_dict(col, tol):
     for i in col.unique():                                                  ## Iterate through everything in the column
         for x in col.unique():                                              ## And do again, nested
             if i != x:                                                      ## If our items are different, we test for similarity
-                if fuzz.token_sort_ratio(i, x) > tol:                       ## If the fuzz ratio between the two is higher than cut-off
+                if fuzz.token_set_ratio(i, x) > tol:                       ## If the fuzz ratio between the two is higher than cut-off
                     if int(fuzz_count(col, i)) > int(fuzz_count(col, x)):   ## See which is used more often in the column
                         test[i] = i                                         ## Set dict as i if i is more frequent
                     else:

@@ -71,12 +71,24 @@ def get_company_network(company_number, api_key, depth):
                     '''
                     if human_check(officer['name']) == "Corporate":
                         company_searched = get_company_search(officer['name'], api_key)
-                        if fuzz.ratio(company_searched['items'][0]['title'],
-                                      officer['name']) > 99:
+                        try:
+                            searched_name = company_searched['items'][0]['title']
+                        except (IndexError, TypeError, KeyError) as e:
+                            searched_name = False
+
+                        if searched_name == officer['name']:
                             searched_num = company_searched['items'][0]['company_number']
                             companies.append(get_company(searched_num, "profile",
                                              api_key, iteration = depth_it))
                             dup_list.append(searched_num)
+                    '''
+                    Add officer records to the edge_table because sometimes the
+                    appointment search misses things.
+                    '''
+                    officer['source'] = officer['name']
+                    officer['target'] = company['name']
+                    appointments.append(officer)
+
                     '''
                     Then we pull each officer's appointments
                     '''
@@ -111,7 +123,7 @@ def get_company_network(company_number, api_key, depth):
                     try:
                         app_num = appointment['appointed_to']['company_number']
                     except (KeyError, TypeError) as e:
-                        print("BUM: {}".format(appointment))
+                        continue
                     if app_num not in dup_list:
                         companies.append(get_company(app_num, "profile",
                                          api_key, iteration = depth_it))
@@ -192,6 +204,12 @@ def get_company_network(company_number, api_key, depth):
     df['target'].loc[df['target'].isna()] = df['company_name'].loc[df['target'].isna()]
 
     '''
+    Removing some duplicates that arise from using both officers and appointments.
+    '''
+    df.drop_duplicates(subset=['source', 'target', 'officer_role', 'appointed_on'], inplace = True)
+
+
+    '''
     Time for graph-building. I'm fairly happy with how the edge-building process
     goes, but ensuring nodes have the right information on them is challenging.
     I'd only recommend using the Gexf for exploration, as this function only
@@ -235,13 +253,19 @@ def get_company_network(company_number, api_key, depth):
     for row in df.iterrows():
         for item in attribute_list:
             if type(row[1][item]) != list and type(row[1][item]) != dict:
-                G.nodes[row[1]['source']][item] = row[1][item]
+                try:
+                    G.nodes[row[1]['source']][item] = row[1][item]
+                except KeyError:
+                    continue
 
     for row in ct.iterrows():
         for item in ct.columns:
             if type(row[1][item]) != list and type(row[1][item]) != dict:
-                G.nodes[row[1]['company_name']][item] = row[1][item]
-
+                try:
+                    G.nodes[row[1]['company_name']][item] = row[1][item]
+                except KeyError:
+                    continue
+    
     # Write everything to disk
     file_id = "{}_{}".format(company_number, depth)
     os.makedirs('./data/{}/'.format(file_id), exist_ok = True)
